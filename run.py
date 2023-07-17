@@ -1,6 +1,7 @@
 import json
 from enum import Enum
 from pathlib import Path
+from typing import Optional
 
 import typer
 from lmclient import AzureChat, LMClient, OpenAIChat
@@ -38,7 +39,7 @@ def main(
     max_requests_per_minute: int = 30,
     async_capacity: int = 5,
     error_mode: str = 'ignore',
-    cache_dir: str | None = 'restar_cache',
+    cache_dir: Optional[str] = 'restar_cache',
 ):
     task_instance = TaskRegistry[task.value]
     client = load_lm_client(
