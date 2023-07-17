@@ -13,7 +13,8 @@ def load_from_json(json_file: str | Path):
 
 def is_jupyter():
     try:
-        from IPython import get_ipython
+        from IPython import get_ipython  # type: ignore
+
         ipy_str = str(type(get_ipython()))
         return 'zmqshell' in ipy_str
     except (ImportError, NameError):
