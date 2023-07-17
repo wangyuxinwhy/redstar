@@ -78,7 +78,7 @@ class GSM8KNumberAnswerExtractor(BaseSingleProcessor):
 def load_gsm8k_dataset(split: str = 'test'):
     dataset_dict = load_dataset('gsm8k', 'main')
     dataset_dict = cast(DatasetDict, dataset_dict)
-    records = [i for i in dataset_dict[split]][:10]
+    records = [i for i in dataset_dict[split]]
     records = cast(Records, records)
     return records
 
@@ -133,7 +133,7 @@ gsm8k_few_shot_task = Task(
     create_pipeline_func=partial(
         create_few_shot_pipeline,
         examples=FixturesDir / 'gsm8k_hardest.json',
-        dialog_style=False,
-        default_client_kwargs={'temperature': 0.0},
+        dialog_style=True,
+        default_client_kwargs={'temperature': 0.01},
     ),
 )

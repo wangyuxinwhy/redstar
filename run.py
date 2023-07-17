@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Optional
 
 import typer
-from lmclient import AzureChat, LMClient, OpenAIChat
+from lmclient import LMClient, AzureChat, OpenAIChat, MinimaxChat
 
 from redstar.tasks.task import TaskRegistry
 
@@ -13,6 +13,7 @@ class ModelType(str, Enum):
     azure_gpt_3_5 = 'azure_gpt_3_5'
     openai_gpt_4 = 'openai_gpt_4'
     openai_gpt_3_5_turbo = 'openai_gpt_3_5_turbo'
+    minimax_5_5 = 'minimax_5_5'
 
 
 TaskType = Enum('TaskType', names={key: key for key in TaskRegistry}, type=str)
@@ -26,6 +27,8 @@ def load_lm_client(model_type: ModelType, **kwargs):
             model = OpenAIChat(model_name='gpt-4')
         case ModelType.openai_gpt_3_5_turbo:
             model = OpenAIChat(model_name='gpt-3.5-turbo')
+        case ModelType.minimax_5_5:
+            model = MinimaxChat('abab5.5-chat')
     client = LMClient(model, **kwargs)
     return client
 
@@ -35,6 +38,7 @@ def main(
     task: TaskType,  # type: ignore
     output_dir: Path = Path('outputs'),
     show: bool = False,
+    max_records: Optional[int] = None,
     timeout: int = 40,
     max_requests_per_minute: int = 30,
     async_capacity: int = 5,
@@ -55,6 +59,9 @@ def main(
     if show:
         pipeline.show(dataset[0])
         return
+
+    if max_records is not None:
+        dataset = dataset[:max_records]
 
     evaluation_result = pipeline(dataset)
 
