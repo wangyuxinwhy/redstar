@@ -42,7 +42,7 @@ def main(
     dataset = task_instance.load_dataset_func()
     evaluation_result = pipeline(dataset)
 
-    subdir = output_dir / task
+    subdir = output_dir / model.value / task.value
     subdir.mkdir(parents=True, exist_ok=True)
 
     with open(subdir / f'records.jsonl', 'w') as f:

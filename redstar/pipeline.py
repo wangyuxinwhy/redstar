@@ -26,6 +26,7 @@ class EvaluationPipeline:
         parser: BaseParser | None = None,
         postprocessors: Sequence[BaseProcessor] | BaseProcessor | None = None,
         metrics: Sequence[BaseMetric] | BaseMetric | None = None,
+        default_client_kwargs: dict | None = None,
         async_run: bool = True,
     ) -> None:
         self.lmclient = lmclient
@@ -57,10 +58,14 @@ class EvaluationPipeline:
             metrics = list(metrics)
         self.metrics = metrics
 
+        self.default_client_kwargs = default_client_kwargs or {}
+
         self.async_run = async_run
 
     def __call__(self, records: Records, **kwargs) -> EvaluationResult:
         records = copy(records)
+        kwargs = {**self.default_client_kwargs, **kwargs}
+
         for preprocessor in self.preprocessors:
             records = preprocessor.process(records)
         prompts = [self.prompt.compile(**record) for record in records]

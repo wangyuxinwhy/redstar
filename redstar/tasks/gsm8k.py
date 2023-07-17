@@ -57,6 +57,7 @@ def create_zero_shot_pipeline(lmclient, async_run: bool = True):
         parser=RegexParser(r'\|.*?(\d+).*?\|'),
         postprocessors=LambdaProcessor(_convert_to_int),
         metrics=Accuracy(),
+        default_client_kwargs={'temperature': 0.0},
         async_run=async_run,
     )
     return zero_shot_pipeline
