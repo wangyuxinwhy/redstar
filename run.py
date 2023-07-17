@@ -5,23 +5,14 @@ from pathlib import Path
 import typer
 from lmclient import AzureChat, LMClient
 
-from redstar.tasks.gsm8k import gsm8k_few_shot_task, gsm8k_zero_shot_task
-from redstar.tasks.task import Task
+from redstar.tasks.task import TaskRegistry
 
 
 class ModelType(str, Enum):
     azure_gpt_3_5 = 'azure_gpt_3_5'
 
 
-class TaskType(str, Enum):
-    gsm8k_zero_shot = 'gsm8k_zero_shot'
-    gsm8k_few_shot = 'gsm8k_few_shot'
-
-
-task_mapping: dict[TaskType, Task] = {
-    TaskType.gsm8k_zero_shot: gsm8k_zero_shot_task,
-    TaskType.gsm8k_few_shot: gsm8k_few_shot_task,
-}
+TaskType = Enum('TaskType', names={key: key for key in TaskRegistry}, type=str)
 
 
 def load_lm_client(model_type: ModelType, **kwargs):
@@ -34,12 +25,12 @@ def load_lm_client(model_type: ModelType, **kwargs):
 
 
 def main(
-    model: ModelType = ModelType.azure_gpt_3_5,
-    task: TaskType = TaskType.gsm8k_zero_shot,
+    model: ModelType,
+    task: TaskType,  # type: ignore
     output_dir: Path = Path('outputs'),
     show: bool = False,
 ):
-    task_instance = task_mapping[task]
+    task_instance = TaskRegistry[task.value]
     client = load_lm_client(model)
     pipeline = task_instance.create_pipeline_func(client)
     dataset = task_instance.load_dataset_func()

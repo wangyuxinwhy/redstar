@@ -9,7 +9,7 @@ from redstar.parsers import RegexParser
 from redstar.pipeline import EvaluationPipeline
 from redstar.processors import BaseSingleProcessor, LambdaProcessor
 from redstar.prompt import BasePrompt
-from redstar.tasks import FixturesDir, Task
+from redstar.tasks.task import FixturesDir, Task
 from redstar.types import Record, Records
 from redstar.utils import load_from_json
 
@@ -98,12 +98,12 @@ def create_zero_shot_pipeline(lmclient, async_run: bool = True):
 
 
 def create_few_shot_pipeline(
-        lmclient,
-        examples: Sequence[dict[str, str]] | str | Path = FixturesDir / 'gsm8k_hardest.json',
-        system_content: str | None = None,
-        dialog_style: bool = False,
-        default_client_kwargs: dict | None = None,
-    ):
+    lmclient,
+    examples: Sequence[dict[str, str]] | str | Path = FixturesDir / 'gsm8k_hardest.json',
+    system_content: str | None = None,
+    dialog_style: bool = False,
+    default_client_kwargs: dict | None = None,
+):
     if isinstance(examples, (str, Path)):
         prompt = GSM8KFewShotPrompt.from_file(examples, dialog_style=dialog_style, system_content=system_content)
     else:
@@ -135,5 +135,5 @@ gsm8k_few_shot_task = Task(
         examples=FixturesDir / 'gsm8k_hardest.json',
         dialog_style=False,
         default_client_kwargs={'temperature': 0.0},
-    )
+    ),
 )
