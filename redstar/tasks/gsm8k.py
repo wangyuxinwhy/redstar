@@ -133,6 +133,17 @@ gsm8k_few_shot_task = Task(
     create_pipeline_func=partial(
         create_few_shot_pipeline,
         examples=FixturesDir / 'gsm8k_hardest.json',
+        dialog_style=False,
+        default_client_kwargs={'temperature': 0.01},
+    ),
+)
+
+gsm8k_dialog_few_shot_task = Task(
+    task_name='gsm8k_dialog_few_shot',
+    load_dataset_func=load_gsm8k_dataset,
+    create_pipeline_func=partial(
+        create_few_shot_pipeline,
+        examples=FixturesDir / 'gsm8k_hardest.json',
         dialog_style=True,
         default_client_kwargs={'temperature': 0.01},
     ),

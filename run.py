@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Optional
 
 import typer
-from lmclient import LMClient, AzureChat, OpenAIChat, MinimaxChat
+from lmclient import AzureChat, LMClient, MinimaxChat, OpenAIChat
 
 from redstar.tasks.task import TaskRegistry
 
