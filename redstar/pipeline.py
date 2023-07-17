@@ -9,6 +9,7 @@ from redstar.parsers import BaseParser
 from redstar.processors import BaseProcessor
 from redstar.prompt import BasePrompt
 from redstar.types import Record, Records
+from redstar.utils import is_jupyter
 
 
 @dataclass
@@ -27,7 +28,7 @@ class EvaluationPipeline:
         postprocessors: Sequence[BaseProcessor] | BaseProcessor | None = None,
         metrics: Sequence[BaseMetric] | BaseMetric | None = None,
         default_client_kwargs: dict | None = None,
-        async_run: bool = True,
+        async_run: bool | None = None,
     ) -> None:
         self.lmclient = lmclient
         self.prompt = prompt
@@ -60,6 +61,8 @@ class EvaluationPipeline:
 
         self.default_client_kwargs = default_client_kwargs or {}
 
+        if async_run is None:
+            async_run = is_jupyter()
         self.async_run = async_run
 
     def __call__(self, records: Records, **kwargs) -> EvaluationResult:
@@ -69,6 +72,9 @@ class EvaluationPipeline:
         for preprocessor in self.preprocessors:
             records = preprocessor.process(records)
         prompts = [self.prompt.compile(**record) for record in records]
+        for record, prompt in zip(records, prompts):
+            record['prompt'] = prompt
+
         if self.async_run:
             results = self.lmclient.async_run(prompts, **kwargs)
         else:
