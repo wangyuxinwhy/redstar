@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Callable, Sequence
 
 from redstar.datasets import DatasetRegistry
+from redstar.model import Model
 from redstar.pipeline import EvaluationPipeline
 from redstar.types import Records
 
@@ -53,7 +54,7 @@ def load_tasks(task_name: str | None = None, task_filter: Callable[[Task], bool]
 
 
 def run_tasks(
-    model, tasks: Sequence[Task], output_dir: Path | None = None, debug: bool = False, max_records: int | None = None
+    model: Model, tasks: Sequence[Task], output_dir: Path | None = None, debug: bool = False, max_records: int | None = None
 ):
     logger.info(f'Running {len(tasks)} tasks: {", ".join(task.task_name for task in tasks)}')
 
@@ -71,7 +72,7 @@ def run_tasks(
         if output_dir is None:
             continue
 
-        subdir = output_dir / model.value / task.task_name
+        subdir = output_dir / model.identifier / task.task_name
         subdir.mkdir(parents=True, exist_ok=True)
         logger.info(f'Saving {task.task_name} of {model} results to {subdir}')
 

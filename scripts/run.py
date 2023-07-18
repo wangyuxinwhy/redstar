@@ -4,6 +4,8 @@ from pathlib import Path
 from typing import Annotated, Optional, Sequence
 
 import typer
+import rich
+from rich.table import Table
 from lmclient import AzureChat, LMClient, MinimaxChat, OpenAIChat
 
 from redstar.model import Model
@@ -11,7 +13,11 @@ from redstar.tasks.task import TaskRegistry, load_tasks, run_tasks
 from redstar.types import Messages
 from redstar.utils import is_jupyter
 
-logger = logging.getLogger(__name__)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s %(levelname)s %(name)s %(message)s',
+)
+app = typer.Typer()
 
 
 class ModelType(str, Enum):
@@ -26,15 +32,19 @@ TaskType = Enum('TaskType', names={key: key for key in TaskRegistry}, type=str)
 
 
 class LMClientWrapper(Model):
-    def __init__(self, client: LMClient, async_run: bool | None = None) -> None:
+    def __init__(self, client: LMClient, async_run: bool | None = None, name: str | None = None) -> None:
         self.client = client
         self.async_run = async_run or (not is_jupyter())
+        self.identifier = name or client.model.identifier
 
     def __call__(self, prompts: Sequence[Messages], **kwargs) -> Sequence[str]:
         if self.async_run:
             return self.client.async_run(prompts, **kwargs)
         else:
             return self.client.run(prompts, **kwargs)
+
+    def __repr__(self) -> str:
+        return f'{self.__class__.__name__}({self.identifier!r})'
 
 
 def load_client_model(model_type: ModelType, **kwargs):
@@ -50,7 +60,7 @@ def load_client_model(model_type: ModelType, **kwargs):
         case ModelType.minimax_5:
             model = MinimaxChat('abab5-chat')
     client = LMClient(model, **kwargs)
-    client = LMClientWrapper(client)
+    client = LMClientWrapper(client, name=model_type.value)
     return client
 
 
@@ -60,7 +70,8 @@ def generate_task_filter_function(filter_code: str):
     return eval(filter_code)
 
 
-def main(
+@app.command()
+def run(
     model: Annotated[ModelType, typer.Option(...)],
     task: TaskType | None = None,  # type: ignore
     filter: Optional[str] = None,
@@ -95,5 +106,23 @@ def main(
     )
 
 
+@app.command(name='list')
+def list_tasks(
+    task: TaskType | None = None,  # type: ignore
+    filter: Optional[str] = None,
+):
+    task_name = task.value if task is not None else None
+    task_filter = generate_task_filter_function(filter) if filter is not None else None
+    tasks = load_tasks(task_name=task_name, task_filter=task_filter)
+
+    headers = ['task_name', 'dataset_name', 'tags']
+    # construct rich table
+    table = Table(*headers, title='RedStar Tasks', show_header=True, header_style='bold cyan', title_style='bold red')
+    for task in tasks:
+        row = [task.task_name, task.dataset_name, ', '.join(task.tags)]
+        table.add_row(*row)
+    rich.print(table)
+
+
 if __name__ == '__main__':
-    typer.run(main)
+    app()
