@@ -2,14 +2,12 @@ from copy import copy
 from dataclasses import dataclass
 from typing import Sequence
 
-from lmclient import LMClient
-
 from redstar.metrics import BaseMetric
+from redstar.model import Model
 from redstar.parsers import BaseParser
 from redstar.processors import BaseProcessor
 from redstar.prompt import BasePrompt
 from redstar.types import Record, Records
-from redstar.utils import is_jupyter
 
 
 @dataclass
@@ -26,8 +24,7 @@ class EvaluationPipeline:
         parser: BaseParser | None = None,
         postprocessors: Sequence[BaseProcessor] | BaseProcessor | None = None,
         metrics: Sequence[BaseMetric] | BaseMetric | None = None,
-        default_client_kwargs: dict | None = None,
-        async_run: bool | None = None,
+        default_model_kwargs: dict | None = None,
     ) -> None:
         self.prompt = prompt
 
@@ -57,15 +54,11 @@ class EvaluationPipeline:
             metrics = list(metrics)
         self.metrics = metrics
 
-        self.default_client_kwargs = default_client_kwargs or {}
+        self.default_model_kwargs = default_model_kwargs or {}
 
-        if async_run is None:
-            async_run = is_jupyter()
-        self.async_run = async_run
-
-    def __call__(self, lmclient: LMClient, records: Records, **kwargs) -> EvaluationResult:
+    def __call__(self, model: Model, records: Records, **model_kwargs) -> EvaluationResult:
         records = copy(records)
-        kwargs = {**self.default_client_kwargs, **kwargs}
+        model_kwargs = {**self.default_model_kwargs, **model_kwargs}
 
         for preprocessor in self.preprocessors:
             records = preprocessor.process(records)
@@ -81,10 +74,7 @@ class EvaluationPipeline:
             prompts.append(prompt)
             record['prompt'] = prompt
 
-        if self.async_run:
-            results = lmclient.async_run(prompts, **kwargs)
-        else:
-            results = lmclient.run(prompts, **kwargs)
+        results = model(prompts, **model_kwargs)
 
         for record, result in zip(records, results):
             record['result'] = result
@@ -101,7 +91,7 @@ class EvaluationPipeline:
 
         return EvaluationResult(metric=metrics, records=records)
 
-    def show(self, lmclient: LMClient, record: Record):
+    def debug(self, model: Model, record: Record):
         import rich
         from rich.columns import Columns
         from rich.panel import Panel
@@ -122,9 +112,9 @@ class EvaluationPipeline:
         prompt = self.prompt.compile(**compile_kwargs)
         panels.append(Panel.fit(Pretty(prompt), title='Prompt'))
 
-        result = lmclient.run([prompt])[0]
+        result = model([prompt])[0]
         record['result'] = result
-        panels.append(Panel.fit(Pretty(result), title=f'{lmclient.__class__.__name__} Result'))
+        panels.append(Panel.fit(Pretty(result), title=f'{model.__class__.__name__} Result'))
 
         if self.parser is not None:
             parsed_result = self.parser.parse(record['result'])

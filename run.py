@@ -1,12 +1,17 @@
-import json
+import logging
 from enum import Enum
 from pathlib import Path
-from typing import Annotated, Optional, cast
+from typing import Annotated, Optional, Sequence
 
 import typer
 from lmclient import AzureChat, LMClient, MinimaxChat, OpenAIChat
 
-from redstar.tasks.task import TaskRegistry
+from redstar.model import Model
+from redstar.tasks.task import TaskRegistry, load_tasks, run_tasks
+from redstar.types import Messages
+from redstar.utils import is_jupyter
+
+logger = logging.getLogger(__name__)
 
 
 class ModelType(str, Enum):
@@ -20,7 +25,19 @@ class ModelType(str, Enum):
 TaskType = Enum('TaskType', names={key: key for key in TaskRegistry}, type=str)
 
 
-def load_lm_client(model_type: ModelType, **kwargs):
+class LMClientWrapper(Model):
+    def __init__(self, client: LMClient, async_run: bool | None = None) -> None:
+        self.client = client
+        self.async_run = async_run or (not is_jupyter())
+
+    def __call__(self, prompts: Sequence[Messages], **kwargs) -> Sequence[str]:
+        if self.async_run:
+            return self.client.async_run(prompts, **kwargs)
+        else:
+            return self.client.run(prompts, **kwargs)
+
+
+def load_client_model(model_type: ModelType, **kwargs):
     match model_type:
         case ModelType.azure_gpt_3_5:
             model = AzureChat()
@@ -33,6 +50,7 @@ def load_lm_client(model_type: ModelType, **kwargs):
         case ModelType.minimax_5:
             model = MinimaxChat('abab5-chat')
     client = LMClient(model, **kwargs)
+    client = LMClientWrapper(client)
     return client
 
 
@@ -44,10 +62,10 @@ def generate_task_filter_function(filter_code: str):
 
 def main(
     model: Annotated[ModelType, typer.Option(...)],
-    task_name: TaskType | None = None,  # type: ignore
-    task_filter: Optional[str] = None,
+    task: TaskType | None = None,  # type: ignore
+    filter: Optional[str] = None,
     output_dir: Path = Path('outputs'),
-    show: bool = False,
+    debug: bool = False,
     max_records: Optional[int] = None,
     timeout: int = 40,
     max_requests_per_minute: int = 30,
@@ -55,21 +73,11 @@ def main(
     error_mode: str = 'ignore',
     cache_dir: Optional[str] = 'restar_cache',
 ):
-    if task_name is not None and task_filter is not None:
-        raise ValueError('Either task_name or task_filter should be specified, not both')
+    task_name = task.value if task is not None else None
+    task_filter = generate_task_filter_function(filter) if filter is not None else None
+    tasks = load_tasks(task_name=task_name, task_filter=task_filter)
 
-    if task_name:
-        tasks = [TaskRegistry[task_name.value]]
-    elif task_filter is not None:
-        task_filter = cast(str, task_filter)
-        filter_function = generate_task_filter_function(task_filter)
-        tasks = [task for task in TaskRegistry.values() if filter_function(task)]
-    else:
-        tasks = [task for task in TaskRegistry.values()]
-
-    print(f'Running {len(tasks)} tasks: {", ".join(task.task_name for task in tasks)}')
-
-    client = load_lm_client(
+    client_model = load_client_model(
         model,
         timeout=timeout,
         max_requests_per_minute=max_requests_per_minute,
@@ -78,29 +86,13 @@ def main(
         cache_dir=cache_dir,
     )
 
-    for task in tasks:
-        if show:
-            task.pipeline.show(client, task.records[0])
-            continue
-
-        if max_records is not None:
-            records = task.records[:max_records]
-        else:
-            records = task.records
-
-        evaluation_result = task.pipeline(client, records)
-
-        subdir = output_dir / model.value / task.task_name
-        subdir.mkdir(parents=True, exist_ok=True)
-
-        with open(subdir / 'records.jsonl', 'w') as f:
-            for result in evaluation_result.records:
-                f.write(json.dumps(result) + '\n')
-
-        with open(subdir / 'metrics.json', 'w') as f:
-            json.dump(evaluation_result.metric, f, indent=2)
-
-        print(evaluation_result.metric)
+    run_tasks(
+        model=client_model,
+        tasks=tasks,
+        output_dir=output_dir,
+        debug=debug,
+        max_records=max_records,
+    )
 
 
 if __name__ == '__main__':

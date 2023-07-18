@@ -65,10 +65,10 @@ def create_few_shot_pipeline(
     few_shot_pipeline = EvaluationPipeline(
         preprocessors=GSM8KNumberAnswerExtractor(),
         prompt=prompt,
-        parser=RegexParser(fr'answer is .*?{gsm8k_number_pattren}.*?'),
+        parser=RegexParser(rf'answer is .*?{gsm8k_number_pattren}.*?'),
         postprocessors=LambdaProcessor(_convert_to_float),
         metrics=Accuracy(),
-        default_client_kwargs=default_client_kwargs,
+        default_model_kwargs=default_client_kwargs,
     )
     return few_shot_pipeline
 
@@ -76,10 +76,10 @@ def create_few_shot_pipeline(
 gsm8k_zero_shot_pipeline = EvaluationPipeline(
     preprocessors=GSM8KNumberAnswerExtractor(),
     prompt=ZeroShotQAPrompt.from_file(FixturesDir / 'gsm8k_zero_shot.txt'),
-    parser=RegexParser(fr'\|.*?{gsm8k_number_pattren}.*?\|'),
+    parser=RegexParser(rf'\|.*?{gsm8k_number_pattren}.*?\|'),
     postprocessors=LambdaProcessor(_convert_to_float),
     metrics=Accuracy(),
-    default_client_kwargs={'temperature': 0.0},
+    default_model_kwargs={'temperature': 0.0},
 )
 
 
