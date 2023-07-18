@@ -17,6 +17,7 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s %(levelname)s %(name)s %(message)s',
 )
+logging.getLogger("openai").setLevel(logging.WARNING)
 app = typer.Typer()
 
 

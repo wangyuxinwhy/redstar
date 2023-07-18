@@ -1,4 +1,4 @@
-from sklearn.metrics import accuracy_score
+import numpy as np
 
 from redstar.types import Records
 
@@ -10,7 +10,7 @@ class BaseMetric:
 
 class Accuracy(BaseMetric):
     def __call__(self, records: Records) -> dict[str, float]:
-        preds = [record['pred'] for record in records]
-        targets = [record['target'] for record in records]
-        acc = accuracy_score(targets, preds)
+        preds = np.array([record['pred'] for record in records])
+        targets = np.array([record['target'] for record in records])
+        acc = (preds == targets).mean()
         return {'accuracy': round(float(acc), 5)}
