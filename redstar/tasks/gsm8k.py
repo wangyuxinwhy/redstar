@@ -14,7 +14,8 @@ def _convert_to_float(record: Record):
     try:
         parsed_result = record['parsed_result']
         if parsed_result:
-            record['pred'] = float(record['parsed_result'])
+            parsed_result = parsed_result.replace(',', '')
+            record['pred'] = float(parsed_result)
         else:
             record['pred'] = 0.0
     except ValueError:
@@ -30,6 +31,9 @@ class GSM8KNumberAnswerExtractor(BaseSingleProcessor):
         number_answer = number_answer.replace(',', '')
         record['target'] = float(number_answer)
         return record
+
+
+gsm8k_number_pattren = r'(\d+(?:,\d+)*(?:\.\d+)?)'
 
 
 def create_few_shot_pipeline(
@@ -61,7 +65,7 @@ def create_few_shot_pipeline(
     few_shot_pipeline = EvaluationPipeline(
         preprocessors=GSM8KNumberAnswerExtractor(),
         prompt=prompt,
-        parser=RegexParser(r'answer is .*?(\d+(\.\d+)?).*?'),
+        parser=RegexParser(fr'answer is .*?{gsm8k_number_pattren}.*?'),
         postprocessors=LambdaProcessor(_convert_to_float),
         metrics=Accuracy(),
         default_client_kwargs=default_client_kwargs,
@@ -72,7 +76,7 @@ def create_few_shot_pipeline(
 gsm8k_zero_shot_pipeline = EvaluationPipeline(
     preprocessors=GSM8KNumberAnswerExtractor(),
     prompt=ZeroShotQAPrompt.from_file(FixturesDir / 'gsm8k_zero_shot.txt'),
-    parser=RegexParser(r'\|.*?(\d+(\.\d+)?).*?\|'),
+    parser=RegexParser(fr'\|.*?{gsm8k_number_pattren}.*?\|'),
     postprocessors=LambdaProcessor(_convert_to_float),
     metrics=Accuracy(),
     default_client_kwargs={'temperature': 0.0},
